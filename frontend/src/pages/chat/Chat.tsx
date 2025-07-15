@@ -46,6 +46,17 @@ const enum messageStatus {
 }
 
 const Chat = () => {
+  // ...existing code...
+  // Audio player ref and handler for citation panel
+  const citationAudioRef = useRef<HTMLAudioElement>(null);
+  const handleCitationAudioPlay = (startTime: number) => {
+    const audio = citationAudioRef.current;
+    if (audio && typeof startTime === 'number' && !isNaN(startTime)) {
+      if (Math.abs(audio.currentTime - startTime) > 0.5) {
+        audio.currentTime = startTime;
+      }
+    }
+  };
   const appStateContext = useContext(AppStateContext)
   const ui = appStateContext?.state.frontendSettings?.ui
   const AUTH_ENABLED = appStateContext?.state.frontendSettings?.auth_enabled
@@ -1026,6 +1037,31 @@ const Chat = () => {
                         <div><strong>Blob URL:</strong> {activeCitationDetails.file?.BlobUrl ? <a href={activeCitationDetails.file.BlobUrl} target="_blank" rel="noopener noreferrer">Open</a> : '-'}</div>
                         <div><strong>File Hash:</strong> {activeCitationDetails.file?.FileHash}</div>
                       </div>
+                      {/* Audio player for mp3 files, seeks to citation start time */}
+                      {activeCitationDetails.file?.BlobUrl && activeCitationDetails.file.BlobUrl.endsWith('.mp3') && activeCitationDetails.chunk && activeCitationDetails.phrases ? (
+                        (() => {
+                          const startIdx = activeCitationDetails.chunk.StartPhraseIndex;
+                          const phrase = activeCitationDetails.phrases[startIdx];
+                          const startTime = phrase?.StartTime ?? 0;
+                          return (
+                            <div style={{ marginBottom: '1em', padding: '0.5em', background: '#f0f8ff', borderRadius: '6px' }}>
+                              <h5 style={{ margin: 0 }}>Audio Player</h5>
+                              <audio
+                                ref={citationAudioRef}
+                                controls
+                                src={activeCitationDetails.file.BlobUrl}
+                                onPlay={() => handleCitationAudioPlay(startTime)}
+                                style={{ width: '100%' }}
+                              >
+                                Your browser does not support the audio element.
+                              </audio>
+                              <div style={{ fontSize: '0.9em', color: '#555', marginTop: '0.5em' }}>
+                                <strong>Starts at:</strong> {typeof startTime === 'number' ? `${startTime.toFixed(2)}s` : startTime}
+                              </div>
+                            </div>
+                          );
+                        })()
+                      ) : null}
                       {/* Full transcription with chunk highlight, scrollable and auto-scroll to chunk, fills remaining space */}
                       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
                         <h5 style={{ margin: '1em 0 0.5em 0' }}>Full Transcription</h5>
