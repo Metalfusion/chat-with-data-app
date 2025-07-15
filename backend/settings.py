@@ -365,7 +365,7 @@ class _AzureCosmosDbMongoVcoreSettings(
         extra="ignore",
         env_ignore_empty=True
     )
-    _type: Literal["azure_cosmosdb"] = PrivateAttr(default="azure_cosmosdb")
+    _type: Literal["azure_cosmos_db"] = PrivateAttr(default="azure_cosmos_db")
     top_k: int = Field(default=5, serialization_alias="top_n_documents")
     strictness: int = 3
     enable_in_domain: bool = Field(default=True, serialization_alias="in_scope")
