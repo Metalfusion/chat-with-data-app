@@ -54,6 +54,7 @@ const Chat = () => {
   const [showLoadingMessage, setShowLoadingMessage] = useState<boolean>(false)
   const [activeCitation, setActiveCitation] = useState<Citation>()
   const [isCitationPanelOpen, setIsCitationPanelOpen] = useState<boolean>(false)
+  const [activeCitationDetails, setActiveCitationDetails] = useState<any>(null)
   const [isIntentsPanelOpen, setIsIntentsPanelOpen] = useState<boolean>(false)
   const abortFuncs = useRef([] as AbortController[])
   const [showAuthMessage, setShowAuthMessage] = useState<boolean | undefined>()
@@ -701,9 +702,26 @@ const Chat = () => {
     chatMessageStreamEnd.current?.scrollIntoView({ behavior: 'smooth' })
   }, [showLoadingMessage, processMessages])
 
-  const onShowCitation = (citation: Citation) => {
+  const onShowCitation = async (citation: Citation) => {
     setActiveCitation(citation)
     setIsCitationPanelOpen(true)
+    setActiveCitationDetails(null)
+    
+    // Use filename or id as chunk_id
+    const chunkId = citation.filepath;
+    if (!chunkId) return
+    
+    try {
+      const res = await fetch(`/citation/${chunkId}`)
+      if (res.ok) {
+        const details = await res.json()
+        setActiveCitationDetails(details)
+      } else {
+        setActiveCitationDetails({ error: 'Not found' })
+      }
+    } catch (e) {
+      setActiveCitationDetails({ error: 'Fetch error' })
+    }
   }
 
   const onShowExecResult = (answerId: string) => {
@@ -948,41 +966,118 @@ const Chat = () => {
           </div>
           {/* Citation Panel */}
           {messages && messages.length > 0 && isCitationPanelOpen && activeCitation && (
-            <Stack.Item className={styles.citationPanel} tabIndex={0} role="tabpanel" aria-label="Citations Panel">
-              <Stack
-                aria-label="Citations Panel Header Container"
-                horizontal
-                className={styles.citationPanelHeaderContainer}
-                horizontalAlign="space-between"
-                verticalAlign="center">
-                <span aria-label="Citations" className={styles.citationPanelHeader}>
-                  Citations
-                </span>
-                <IconButton
-                  iconProps={{ iconName: 'Cancel' }}
-                  aria-label="Close citations panel"
-                  onClick={() => setIsCitationPanelOpen(false)}
-                />
-              </Stack>
-              <h5
-                className={styles.citationPanelTitle}
-                tabIndex={0}
-                title={
-                  activeCitation.url && !activeCitation.url.includes('blob.core')
-                    ? activeCitation.url
-                    : activeCitation.title ?? ''
-                }
-                onClick={() => onViewSource(activeCitation)}>
-                {activeCitation.title}
-              </h5>
-              <div tabIndex={0}>
-                <ReactMarkdown
-                  linkTarget="_blank"
-                  className={styles.citationPanelContent}
-                  children={DOMPurify.sanitize(activeCitation.content, { ALLOWED_TAGS: XSSAllowTags })}
-                  remarkPlugins={[remarkGfm]}
-                  rehypePlugins={[rehypeRaw]}
-                />
+            <Stack.Item className={styles.citationPanel} tabIndex={0} role="tabpanel" aria-label="Citations Panel" style={{ display: 'flex', flexDirection: 'column' }}>
+              <div style={{ flex: '0 0 auto' }}>
+                <Stack
+                  aria-label="Citations Panel Header Container"
+                  horizontal
+                  className={styles.citationPanelHeaderContainer}
+                  horizontalAlign="space-between"
+                  verticalAlign="center">
+                  <span aria-label="Citations" className={styles.citationPanelHeader}>
+                    Citations
+                  </span>
+                  <IconButton
+                    iconProps={{ iconName: 'Cancel' }}
+                    aria-label="Close citations panel"
+                    onClick={() => setIsCitationPanelOpen(false)}
+                  />
+                </Stack>
+                <h5
+                  className={styles.citationPanelTitle}
+                  tabIndex={0}
+                  title={
+                    activeCitation.url && !activeCitation.url.includes('blob.core')
+                      ? activeCitation.url
+                      : activeCitation.title ?? ''
+                  }
+                  onClick={() => onViewSource(activeCitation)}>
+                  {activeCitation.title}
+                </h5>
+                {/* <div tabIndex={0}>
+                  <ReactMarkdown
+                    linkTarget="_blank"
+                    className={styles.citationPanelContent}
+                    children={DOMPurify.sanitize(activeCitation.content, { ALLOWED_TAGS: XSSAllowTags })}
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeRaw]}
+                  />
+                </div> */}
+              </div>
+              {/* Extended citation info rendering */}
+              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
+                {activeCitationDetails ? (
+                  activeCitationDetails.error ? (
+                    <div style={{ color: 'red' }}>{activeCitationDetails.error}</div>
+                  ) : (
+                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
+                      {/* File Info at the top */}
+                      <div style={{ marginBottom: '1em', padding: '0.5em', background: '#f7f7fa', borderRadius: '6px' }}>
+                        <h5 style={{ margin: 0 }}>File Info</h5>
+                        <div><strong>Audio File Name:</strong> {activeCitationDetails.file?.OriginalFileName}</div>
+                        {/* <div><strong>Blob Name:</strong> {activeCitationDetails.file?.BlobName}</div> */}
+                        {/* <div><strong>Created At:</strong> {
+                          activeCitationDetails.file?.CreatedAt
+                            ? typeof activeCitationDetails.file.CreatedAt === 'object'
+                              ? `${activeCitationDetails.file.CreatedAt.DateTime || ''} (Offset: ${activeCitationDetails.file.CreatedAt.Offset || ''}, Ticks: ${activeCitationDetails.file.CreatedAt.Ticks || ''})`
+                              : activeCitationDetails.file.CreatedAt
+                            : '-'
+                        }</div> */}
+                        <div><strong>Blob URL:</strong> {activeCitationDetails.file?.BlobUrl ? <a href={activeCitationDetails.file.BlobUrl} target="_blank" rel="noopener noreferrer">Open</a> : '-'}</div>
+                        <div><strong>File Hash:</strong> {activeCitationDetails.file?.FileHash}</div>
+                      </div>
+                      {/* Full transcription with chunk highlight, scrollable and auto-scroll to chunk, fills remaining space */}
+                      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
+                        <h5 style={{ margin: '1em 0 0.5em 0' }}>Full Transcription</h5>
+                        <div
+                          style={{
+                            fontFamily: 'monospace',
+                            fontSize: '1em',
+                            whiteSpace: 'pre-wrap',
+                            lineHeight: '1.5',
+                            flex: 1,
+                            minHeight: 0,
+                            overflowY: 'auto',
+                            border: '1px solid #eee',
+                            borderRadius: '6px',
+                            padding: '0.5em',
+                            background: '#fff'
+                          }}
+                          ref={el => {
+                            if (el && activeCitationDetails && activeCitationDetails.chunk) {
+                              const startIdx = activeCitationDetails.chunk?.StartPhraseIndex ?? -1;
+                              const phraseDiv = el.querySelector(`[data-phrase-idx='${startIdx}']`);
+                              if (phraseDiv) {
+                                phraseDiv.scrollIntoView({ behavior: 'auto', block: 'center' });
+                              }
+                            }
+                          }}
+                        >
+                          {activeCitationDetails.phrases?.map((phrase: any, idx: number) => {
+                            const startIdx = activeCitationDetails.chunk?.StartPhraseIndex ?? -1;
+                            const endIdx = activeCitationDetails.chunk?.EndPhraseIndex ?? -1;
+                            const isChunk = idx >= startIdx && idx <= endIdx;
+                            return (
+                              <div
+                                key={phrase._id}
+                                data-phrase-idx={idx}
+                                style={{
+                                  background: isChunk ? '#e6f7ff' : 'transparent',
+                                  borderRadius: isChunk ? '4px' : undefined,
+                                  padding: isChunk ? '2px 0' : undefined
+                                }}
+                              >
+                                {phrase.DisplayText}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )
+                ) : (
+                  <div>Loading citation details...</div>
+                )}
               </div>
             </Stack.Item>
           )}
