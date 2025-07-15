@@ -1,4 +1,7 @@
 import { useRef, useState, useEffect, useContext, useLayoutEffect } from 'react'
+import AudioPlayer from 'react-h5-audio-player';
+import { RHAP_UI } from 'react-h5-audio-player';
+import 'react-h5-audio-player/lib/styles.css';
 import { CommandBarButton, IconButton, Dialog, DialogType, Stack } from '@fluentui/react'
 import { SquareRegular, ShieldLockRegular, ErrorCircleRegular } from '@fluentui/react-icons'
 
@@ -46,15 +49,65 @@ const enum messageStatus {
 }
 
 const Chat = () => {
-  // ...existing code...
-  // Audio player ref and handler for citation panel
-  const citationAudioRef = useRef<HTMLAudioElement>(null);
-  const handleCitationAudioPlay = (startTime: number) => {
-    const audio = citationAudioRef.current;
-    if (audio && typeof startTime === 'number' && !isNaN(startTime)) {
-      if (Math.abs(audio.currentTime - startTime) > 0.5) {
-        audio.currentTime = startTime;
+  // Utility to parse time string (e.g. '00:00:21.3500000') to seconds
+  function parseTimeToSeconds(time: string | number): number {
+    if (typeof time === 'number') return time;
+    if (typeof time === 'string') {
+      // Match HH:MM:SS(.fractional)
+      const match = time.match(/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
+      if (match) {
+        const hours = parseInt(match[1], 10);
+        const minutes = parseInt(match[2], 10);
+        const seconds = parseInt(match[3], 10);
+        const fractional = match[4] ? parseFloat('0.' + match[4]) : 0;
+        return hours * 3600 + minutes * 60 + seconds + fractional;
       }
+      // fallback: try to parse as float
+      const asFloat = parseFloat(time);
+      if (!isNaN(asFloat)) return asFloat;
+    }
+    return 0;
+  }
+  // For citation panel audio: download and use blob URL for playback
+  const [citationAudioBlobUrl, setCitationAudioBlobUrl] = useState<string | null>(null);
+  const [isDownloadingAudio, setIsDownloadingAudio] = useState(false);
+
+  // Download MP3 and set blob URL for audio playback (triggered on first play)
+  const [hasDownloadedAudio, setHasDownloadedAudio] = useState(false);
+  const downloadAndSetCitationAudio = async (url: string, startTime?: number) => {
+    setIsDownloadingAudio(true);
+    try {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error(`Failed: ${res.status}`);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      setCitationAudioBlobUrl(blobUrl);
+      setHasDownloadedAudio(true);
+      // Wait for the audio element to update src, then seek and play
+      setTimeout(() => {
+        const audioEl = citationAudioRef.current?.audio?.current;
+        if (audioEl && typeof startTime === 'number' && !isNaN(startTime)) {
+          audioEl.currentTime = startTime;
+          audioEl.play();
+          setHasSeekedCitation(true);
+        }
+      }, 200);
+    } catch (e) {
+      setCitationAudioBlobUrl(null);
+      alert('Failed to download audio file.');
+    } finally {
+      setIsDownloadingAudio(false);
+    }
+  };
+  // Audio player ref and seeking state for citation panel
+  const citationAudioRef = useRef<any>(null);
+  const [citationCurrentTime, setCitationCurrentTime] = useState(0);
+  const [hasSeekedCitation, setHasSeekedCitation] = useState(false);
+  const seekToCitationStart = (startTime: number) => {
+    const audioEl = citationAudioRef.current?.audio?.current;
+    if (audioEl && typeof startTime === 'number' && !isNaN(startTime)) {
+      audioEl.currentTime = startTime;
+      setHasSeekedCitation(true);
     }
   };
   const appStateContext = useContext(AppStateContext)
@@ -77,6 +130,15 @@ const Chat = () => {
   const [errorMsg, setErrorMsg] = useState<ErrorMessage | null>()
   const [logo, setLogo] = useState('')
   const [answerId, setAnswerId] = useState<string>('')
+  // Cleanup blob URL when citation panel closes or citation changes
+  useEffect(() => {
+    if (!isCitationPanelOpen || !activeCitationDetails?.file?.BlobUrl) {
+      if (citationAudioBlobUrl) {
+        URL.revokeObjectURL(citationAudioBlobUrl);
+        setCitationAudioBlobUrl(null);
+      }
+    }
+  }, [isCitationPanelOpen, activeCitationDetails?.file?.BlobUrl]);
 
   const errorDialogContentProps = {
     type: DialogType.close,
@@ -786,6 +848,12 @@ const Chat = () => {
     )
   }
 
+  // Reset seek state when citation panel opens or citation changes
+  useEffect(() => {
+    setHasSeekedCitation(false);
+    setCitationCurrentTime(0);
+  }, [isCitationPanelOpen, activeCitationDetails]);
+
   return (
     <div className={styles.container} role="main">
       {showAuthMessage ? (
@@ -1042,21 +1110,68 @@ const Chat = () => {
                         (() => {
                           const startIdx = activeCitationDetails.chunk.StartPhraseIndex;
                           const phrase = activeCitationDetails.phrases[startIdx];
-                          const startTime = phrase?.StartTime ?? 0;
+                          const startTimeRaw = phrase?.StartTime ?? 0;
+                          const startTime = parseTimeToSeconds(startTimeRaw);
+                          // Seek to citation start only once, after audio loads and is seekable
+                          const handleAudioLoaded = () => {
+                            setTimeout(() => {
+                              if (!hasSeekedCitation && citationAudioRef.current?.audio?.current && citationAudioRef.current.audio.current.seekable.length > 0) {
+                                seekToCitationStart(startTime);
+                              }
+                            }, 100);
+                          };
+                          const audioUrl = citationAudioBlobUrl || activeCitationDetails.file.BlobUrl;
+                          // Download on first play, then seek and play
+                          const handlePlay = async () => {
+                            if (!citationAudioBlobUrl && !isDownloadingAudio && !hasDownloadedAudio) {
+                              await downloadAndSetCitationAudio(activeCitationDetails.file.BlobUrl, startTime);
+                            }
+                          };
                           return (
                             <div style={{ marginBottom: '1em', padding: '0.5em', background: '#f0f8ff', borderRadius: '6px' }}>
                               <h5 style={{ margin: 0 }}>Audio Player</h5>
-                              <audio
+                              {citationAudioBlobUrl && (
+                                <span style={{ color: '#0078d4', fontSize: '0.9em', marginBottom: '0.5em' }}>Playing downloaded file</span>
+                              )}
+                              <AudioPlayer
                                 ref={citationAudioRef}
-                                controls
-                                src={activeCitationDetails.file.BlobUrl}
-                                onPlay={() => handleCitationAudioPlay(startTime)}
+                                src={audioUrl}
+                                preload="auto"
+                                onPlay={handlePlay}
+                                onListen={e => {
+                                  const audioEl = citationAudioRef.current?.audio.current;
+                                  if (audioEl) setCitationCurrentTime(audioEl.currentTime);
+                                }}
+                                onLoadedMetaData={handleAudioLoaded}
                                 style={{ width: '100%' }}
-                              >
-                                Your browser does not support the audio element.
-                              </audio>
-                              <div style={{ fontSize: '0.9em', color: '#555', marginTop: '0.5em' }}>
-                                <strong>Starts at:</strong> {typeof startTime === 'number' ? `${startTime.toFixed(2)}s` : startTime}
+                                showJumpControls={false}
+                                showDownloadProgress={true}
+                                customAdditionalControls={[]}
+                                customVolumeControls={[RHAP_UI.VOLUME]}
+                              />
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '1em', fontSize: '0.9em', color: '#555', marginTop: '0.5em' }}>
+                                <strong>Starts at:</strong> {typeof startTimeRaw === 'string' ? `${startTime.toFixed(2)}s` : startTimeRaw}
+                                <button
+                                  type="button"
+                                  style={{ marginLeft: '1em', padding: '2px 8px', fontSize: '0.9em', borderRadius: '4px', border: '1px solid #ccc', background: '#f7f7fa', cursor: 'pointer' }}
+                                  onClick={async () => {
+                                    if (!citationAudioBlobUrl && !isDownloadingAudio && !hasDownloadedAudio) {
+                                      await downloadAndSetCitationAudio(activeCitationDetails.file.BlobUrl, startTime);
+                                      return;
+                                    }
+                                    const audioEl = citationAudioRef.current?.audio?.current;
+                                    if (audioEl && audioEl.seekable.length > 0) {
+                                      audioEl.currentTime = startTime;
+                                      audioEl.play();
+                                      setHasSeekedCitation(true);
+                                    } else if (!isDownloadingAudio) {
+                                      alert('Audio not loaded or seekable yet.');
+                                    }
+                                  }}
+                                >
+                                  Jump to citation start
+                                </button>
                               </div>
                             </div>
                           );
