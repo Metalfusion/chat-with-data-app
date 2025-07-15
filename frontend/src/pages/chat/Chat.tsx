@@ -49,6 +49,8 @@ const enum messageStatus {
 }
 
 const Chat = () => {
+  // Track auto-scroll state for transcript elements
+  const transcriptAutoScrollMap = useRef<WeakMap<Element, boolean>>(new WeakMap());
   // Utility to parse time string (e.g. '00:00:21.3500000') to seconds
   function parseTimeToSeconds(time: string | number): number {
     if (typeof time === 'number') return time;
@@ -1195,11 +1197,13 @@ const Chat = () => {
                             background: '#fff'
                           }}
                           ref={el => {
-                            if (el && activeCitationDetails && activeCitationDetails.chunk) {
+                            // Only auto-scroll once per citation panel open/change
+                            if (el && activeCitationDetails && activeCitationDetails.chunk && !transcriptAutoScrollMap.current.get(el)) {
                               const startIdx = activeCitationDetails.chunk?.StartPhraseIndex ?? -1;
                               const phraseDiv = el.querySelector(`[data-phrase-idx='${startIdx}']`);
                               if (phraseDiv) {
                                 phraseDiv.scrollIntoView({ behavior: 'auto', block: 'center' });
+                                transcriptAutoScrollMap.current.set(el, true);
                               }
                             }
                           }}
