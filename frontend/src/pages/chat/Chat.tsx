@@ -49,6 +49,38 @@ const enum messageStatus {
 }
 
 const Chat = () => {
+  /**
+   * Returns a color string for a confidence value (0-1).
+   * 0 = red, 0.5 = yellow, 1 = green, smooth gradient.
+   */
+  function getConfidenceColor(conf: number) {
+    // Clamp between 0 and 1
+    conf = Math.max(0, Math.min(1, conf));
+    // Red to yellow to green
+    // Red:   rgb(220, 38, 38)
+    // Yellow:rgb(255, 215, 0)
+    // Green: rgb(34, 197, 94)
+    let r, g, b;
+    if (conf < 0.5) {
+      // Red to yellow
+      const ratio = conf / 0.5;
+      r = Math.round(220 + (255 - 220) * ratio);
+      g = Math.round(38 + (215 - 38) * ratio);
+      b = Math.round(38 + (0 - 38) * ratio);
+    } else {
+      // Yellow to green
+      const ratio = (conf - 0.5) / 0.5;
+      r = Math.round(255 + (34 - 255) * ratio);
+      g = Math.round(215 + (197 - 215) * ratio);
+      b = Math.round(0 + (94 - 0) * ratio);
+    }
+    // Blend with white to reduce saturation (e.g. 60% color, 40% white)
+    const blend = 0.6;
+    r = Math.round(r * blend + 255 * (1 - blend));
+    g = Math.round(g * blend + 255 * (1 - blend));
+    b = Math.round(b * blend + 255 * (1 - blend));
+    return `rgb(${r},${g},${b})`;
+  }
   // Track auto-scroll state for transcript elements
   const transcriptAutoScrollMap = useRef<WeakMap<Element, boolean>>(new WeakMap());
   // Utility to parse time string (e.g. '00:00:21.3500000') to seconds
@@ -1194,6 +1226,7 @@ const Chat = () => {
                             border: '1px solid #eee',
                             borderRadius: '6px',
                             padding: '0.5em',
+                            paddingLeft: '0',
                             background: '#fff'
                           }}
                           ref={el => {
@@ -1212,6 +1245,8 @@ const Chat = () => {
                             const startIdx = activeCitationDetails.chunk?.StartPhraseIndex ?? -1;
                             const endIdx = activeCitationDetails.chunk?.EndPhraseIndex ?? -1;
                             const isChunk = idx >= startIdx && idx <= endIdx;
+                            const confidence = typeof phrase.RecognitionConfidence === 'number' ? phrase.RecognitionConfidence : 0;
+                            const borderColor = getConfidenceColor(confidence);
                             return (
                               <div
                                 key={phrase._id}
@@ -1219,8 +1254,12 @@ const Chat = () => {
                                 style={{
                                   background: isChunk ? '#e6f7ff' : 'transparent',
                                   borderRadius: isChunk ? '4px' : undefined,
-                                  padding: isChunk ? '2px 0' : undefined
+                                  padding: isChunk ? '2px 0' : undefined,
+                                  borderLeft: `5px solid ${borderColor}`,
+                                  paddingLeft: `0.5em`,
+                                  marginLeft: '0',
                                 }}
+                                title={`Confidence: ${(confidence * 100).toFixed(1)}%`}
                               >
                                 {phrase.DisplayText}
                               </div>
