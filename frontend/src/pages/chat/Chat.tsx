@@ -1,9 +1,9 @@
-import { useRef, useState, useEffect, useContext, useLayoutEffect } from 'react'
-import AudioPlayer from 'react-h5-audio-player';
-import { RHAP_UI } from 'react-h5-audio-player';
-import 'react-h5-audio-player/lib/styles.css';
+import { useContext, useEffect, useState, useRef, useLayoutEffect } from 'react'
 import { CommandBarButton, IconButton, Dialog, DialogType, Stack } from '@fluentui/react'
 import { SquareRegular, ShieldLockRegular, ErrorCircleRegular } from '@fluentui/react-icons'
+
+import { RHAP_UI } from 'react-h5-audio-player';
+import 'react-h5-audio-player/lib/styles.css';
 
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -13,10 +13,6 @@ import { isEmpty } from 'lodash'
 import DOMPurify from 'dompurify'
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
 import { nord } from 'react-syntax-highlighter/dist/esm/styles/prism'
-
-import styles from './Chat.module.css'
-import Contoso from '../../assets/Contoso.svg'
-import { XSSAllowTags } from '../../constants/sanatizeAllowables'
 
 import {
   ChatMessage,
@@ -41,6 +37,11 @@ import { QuestionInput } from "../../components/QuestionInput";
 import { ChatHistoryPanel } from "../../components/ChatHistory/ChatHistoryPanel";
 import { AppStateContext } from "../../state/AppProvider";
 import { useBoolean } from "@fluentui/react-hooks";
+import CitationPanel from './CitationPanel';
+
+import styles from './Chat.module.css'
+import Contoso from '../../assets/Contoso.svg'
+import { XSSAllowTags } from '../../constants/sanatizeAllowables'
 
 const enum messageStatus {
   NotRunning = 'Not Running',
@@ -49,144 +50,6 @@ const enum messageStatus {
 }
 
 const Chat = () => {
-  // State for queued playback and last requested timestamp
-  const [queuedSeekTime, setQueuedSeekTime] = useState<number | null>(null);
-  const [isSeekQueued, setIsSeekQueued] = useState(false);
-
-  // Unified handler for seeking and playback
-  const handleSeekAndPlay = async (startTime: number) => {
-    // If audio is not downloaded, start download and queue seek
-    if (!citationAudioBlobUrl && !isDownloadingAudio && !hasDownloadedAudio && activeCitationDetails?.file?.BlobUrl) {
-      setQueuedSeekTime(startTime);
-      setIsSeekQueued(true);
-      await downloadAndSetCitationAudio(activeCitationDetails.file.BlobUrl, startTime);
-      // downloadAndSetCitationAudio will seek and play when ready
-      return;
-    }
-    // If audio is downloaded and ready
-    const audioEl = citationAudioRef.current?.audio?.current;
-    if (audioEl && audioEl.seekable.length > 0) {
-      audioEl.currentTime = startTime;
-      audioEl.play();
-      setHasSeekedCitation(true);
-      setQueuedSeekTime(null);
-      setIsSeekQueued(false);
-    } else {
-      // If not seekable yet, queue seek
-      setQueuedSeekTime(startTime);
-      setIsSeekQueued(true);
-      alert('Audio not loaded or seekable yet. Will play when ready.');
-    }
-  };
-
-  // When audio loads, check if a seek is queued
-  const handleAudioLoadedMetaData = () => {
-    setTimeout(() => {
-      const audioEl = citationAudioRef.current?.audio?.current;
-      if (isSeekQueued && queuedSeekTime !== null && audioEl && audioEl.seekable.length > 0) {
-        audioEl.currentTime = queuedSeekTime;
-        audioEl.play();
-        setHasSeekedCitation(true);
-        setQueuedSeekTime(null);
-        setIsSeekQueued(false);
-      }
-    }, 100);
-  };
-  /**
-   * Returns a color string for a confidence value (0-1).
-   * 0 = red, 0.5 = yellow, 1 = green, smooth gradient.
-   */
-  function getConfidenceColor(conf: number) {
-    // Clamp between 0 and 1
-    conf = Math.max(0, Math.min(1, conf));
-    // Red to yellow to green
-    // Red:   rgb(220, 38, 38)
-    // Yellow:rgb(255, 215, 0)
-    // Green: rgb(34, 197, 94)
-    let r, g, b;
-    if (conf < 0.5) {
-      // Red to yellow
-      const ratio = conf / 0.5;
-      r = Math.round(220 + (255 - 220) * ratio);
-      g = Math.round(38 + (215 - 38) * ratio);
-      b = Math.round(38 + (0 - 38) * ratio);
-    } else {
-      // Yellow to green
-      const ratio = (conf - 0.5) / 0.5;
-      r = Math.round(255 + (34 - 255) * ratio);
-      g = Math.round(215 + (197 - 215) * ratio);
-      b = Math.round(0 + (94 - 0) * ratio);
-    }
-    // Blend with white to reduce saturation (e.g. 60% color, 40% white)
-    const blend = 0.6;
-    r = Math.round(r * blend + 255 * (1 - blend));
-    g = Math.round(g * blend + 255 * (1 - blend));
-    b = Math.round(b * blend + 255 * (1 - blend));
-    return `rgb(${r},${g},${b})`;
-  }
-  // Track auto-scroll state for transcript elements
-  const transcriptAutoScrollMap = useRef<WeakMap<Element, boolean>>(new WeakMap());
-  // Utility to parse time string (e.g. '00:00:21.3500000') to seconds
-  function parseTimeToSeconds(time: string | number): number {
-    if (typeof time === 'number') return time;
-    if (typeof time === 'string') {
-      // Match HH:MM:SS(.fractional)
-      const match = time.match(/^(\d{2}):(\d{2}):(\d{2})(?:\.(\d+))?/);
-      if (match) {
-        const hours = parseInt(match[1], 10);
-        const minutes = parseInt(match[2], 10);
-        const seconds = parseInt(match[3], 10);
-        const fractional = match[4] ? parseFloat('0.' + match[4]) : 0;
-        return hours * 3600 + minutes * 60 + seconds + fractional;
-      }
-      // fallback: try to parse as float
-      const asFloat = parseFloat(time);
-      if (!isNaN(asFloat)) return asFloat;
-    }
-    return 0;
-  }
-  // For citation panel audio: download and use blob URL for playback
-  const [citationAudioBlobUrl, setCitationAudioBlobUrl] = useState<string | null>(null);
-  const [isDownloadingAudio, setIsDownloadingAudio] = useState(false);
-
-  // Download MP3 and set blob URL for audio playback (triggered on first play)
-  const [hasDownloadedAudio, setHasDownloadedAudio] = useState(false);
-  const downloadAndSetCitationAudio = async (url: string, startTime?: number) => {
-    setIsDownloadingAudio(true);
-    try {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error(`Failed: ${res.status}`);
-      const blob = await res.blob();
-      const blobUrl = URL.createObjectURL(blob);
-      setCitationAudioBlobUrl(blobUrl);
-      setHasDownloadedAudio(true);
-      // Wait for the audio element to update src, then seek and play
-      setTimeout(() => {
-        const audioEl = citationAudioRef.current?.audio?.current;
-        if (audioEl && typeof startTime === 'number' && !isNaN(startTime)) {
-          audioEl.currentTime = startTime;
-          audioEl.play();
-          setHasSeekedCitation(true);
-        }
-      }, 200);
-    } catch (e) {
-      setCitationAudioBlobUrl(null);
-      alert('Failed to download audio file.');
-    } finally {
-      setIsDownloadingAudio(false);
-    }
-  };
-  // Audio player ref and seeking state for citation panel
-  const citationAudioRef = useRef<any>(null);
-  const [citationCurrentTime, setCitationCurrentTime] = useState(0);
-  const [hasSeekedCitation, setHasSeekedCitation] = useState(false);
-  const seekToCitationStart = (startTime: number) => {
-    const audioEl = citationAudioRef.current?.audio?.current;
-    if (audioEl && typeof startTime === 'number' && !isNaN(startTime)) {
-      audioEl.currentTime = startTime;
-      setHasSeekedCitation(true);
-    }
-  };
   const appStateContext = useContext(AppStateContext)
   const ui = appStateContext?.state.frontendSettings?.ui
   const AUTH_ENABLED = appStateContext?.state.frontendSettings?.auth_enabled
@@ -207,15 +70,6 @@ const Chat = () => {
   const [errorMsg, setErrorMsg] = useState<ErrorMessage | null>()
   const [logo, setLogo] = useState('')
   const [answerId, setAnswerId] = useState<string>('')
-  // Cleanup blob URL when citation panel closes or citation changes
-  useEffect(() => {
-    if (!isCitationPanelOpen || !activeCitationDetails?.file?.BlobUrl) {
-      if (citationAudioBlobUrl) {
-        URL.revokeObjectURL(citationAudioBlobUrl);
-        setCitationAudioBlobUrl(null);
-      }
-    }
-  }, [isCitationPanelOpen, activeCitationDetails?.file?.BlobUrl]);
 
   const errorDialogContentProps = {
     type: DialogType.close,
@@ -332,8 +186,8 @@ const Chat = () => {
 
   const makeApiRequestWithoutCosmosDB = async (question: ChatMessage["content"], conversationId?: string) => {
     setIsLoading(true)
-    setShowLoadingMessage(true)
-    const abortController = new AbortController()
+    setShowLoadingMessage(true);
+    const abortController = new AbortController();
     abortFuncs.current.unshift(abortController)
 
     const questionContent = typeof question === 'string' ? question : [{ type: "text", text: question[0].text }, { type: "image_url", image_url: { url: question[1].image_url.url } }]
@@ -925,12 +779,6 @@ const Chat = () => {
     )
   }
 
-  // Reset seek state when citation panel opens or citation changes
-  useEffect(() => {
-    setHasSeekedCitation(false);
-    setCitationCurrentTime(0);
-  }, [isCitationPanelOpen, activeCitationDetails]);
-
   return (
     <div className={styles.container} role="main">
       {showAuthMessage ? (
@@ -1121,231 +969,13 @@ const Chat = () => {
             </Stack>
           </div>
           {/* Citation Panel */}
-          {messages && messages.length > 0 && isCitationPanelOpen && activeCitation && (
-            <Stack.Item className={styles.citationPanel} tabIndex={0} role="tabpanel" aria-label="Citations Panel" style={{ display: 'flex', flexDirection: 'column' }}>
-              <div style={{ flex: '0 0 auto' }}>
-                <Stack
-                  aria-label="Citations Panel Header Container"
-                  horizontal
-                  className={styles.citationPanelHeaderContainer}
-                  horizontalAlign="space-between"
-                  verticalAlign="center">
-                  <span aria-label="Citations" className={styles.citationPanelHeader}>
-                    Citations
-                  </span>
-                  <IconButton
-                    iconProps={{ iconName: 'Cancel' }}
-                    aria-label="Close citations panel"
-                    onClick={() => setIsCitationPanelOpen(false)}
-                  />
-                </Stack>
-                <h5
-                  className={styles.citationPanelTitle}
-                  tabIndex={0}
-                  title={
-                    activeCitation.url && !activeCitation.url.includes('blob.core')
-                      ? activeCitation.url
-                      : activeCitation.title ?? ''
-                  }
-                  onClick={() => onViewSource(activeCitation)}>
-                  {activeCitation.title}
-                </h5>
-                {/* <div tabIndex={0}>
-                  <ReactMarkdown
-                    linkTarget="_blank"
-                    className={styles.citationPanelContent}
-                    children={DOMPurify.sanitize(activeCitation.content, { ALLOWED_TAGS: XSSAllowTags })}
-                    remarkPlugins={[remarkGfm]}
-                    rehypePlugins={[rehypeRaw]}
-                  />
-                </div> */}
-              </div>
-              {/* Extended citation info rendering */}
-              <div style={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column' }}>
-                {activeCitationDetails ? (
-                  activeCitationDetails.error ? (
-                    <div style={{ color: 'red' }}>{activeCitationDetails.error}</div>
-                  ) : (
-                    <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
-                      {/* File Info at the top */}
-                      <div style={{ marginBottom: '1em', padding: '0.5em', background: '#f7f7fa', borderRadius: '6px' }}>
-                        <h5 style={{ margin: 0 }}>File Info</h5>
-                        <div><strong>Audio File Name:</strong> {activeCitationDetails.file?.OriginalFileName}</div>
-                        {/* <div><strong>Blob Name:</strong> {activeCitationDetails.file?.BlobName}</div> */}
-                        {/* <div><strong>Created At:</strong> {
-                          activeCitationDetails.file?.CreatedAt
-                            ? typeof activeCitationDetails.file.CreatedAt === 'object'
-                              ? `${activeCitationDetails.file.CreatedAt.DateTime || ''} (Offset: ${activeCitationDetails.file.CreatedAt.Offset || ''}, Ticks: ${activeCitationDetails.file.CreatedAt.Ticks || ''})`
-                              : activeCitationDetails.file.CreatedAt
-                            : '-'
-                        }</div> */}
-                        <div><strong>Blob URL:</strong> {activeCitationDetails.file?.BlobUrl ? <a href={activeCitationDetails.file.BlobUrl} target="_blank" rel="noopener noreferrer">Open</a> : '-'}</div>
-                        <div><strong>File Hash:</strong> {activeCitationDetails.file?.FileHash}</div>
-                      </div>
-                      {/* Audio player for mp3 files, seeks to citation start time */}
-                      {activeCitationDetails.file?.BlobUrl && activeCitationDetails.file.BlobUrl.endsWith('.mp3') && activeCitationDetails.chunk && activeCitationDetails.phrases ? (
-                        (() => {
-                          const startIdx = activeCitationDetails.chunk.StartPhraseIndex;
-                          const phrase = activeCitationDetails.phrases[startIdx];
-                          const startTimeRaw = phrase?.StartTime ?? 0;
-                          const startTime = parseTimeToSeconds(startTimeRaw);
-                          // Seek to citation start only once, after audio loads and is seekable
-                          const handleAudioLoaded = () => {
-                            setTimeout(() => {
-                              if (!hasSeekedCitation && citationAudioRef.current?.audio?.current && citationAudioRef.current.audio.current.seekable.length > 0) {
-                                seekToCitationStart(startTime);
-                              }
-                            }, 100);
-                          };
-                          const audioUrl = citationAudioBlobUrl || activeCitationDetails.file.BlobUrl;
-                          // Download on first play, then seek and play
-                          const handlePlay = async () => {
-                            if (!citationAudioBlobUrl && !isDownloadingAudio && !hasDownloadedAudio) {
-                              await downloadAndSetCitationAudio(activeCitationDetails.file.BlobUrl, startTime);
-                            }
-                          };
-                          return (
-                            <div style={{ marginBottom: '1em', padding: '0.5em', background: '#f0f8ff', borderRadius: '6px' }}>
-                              <h5 style={{ margin: 0 }}>Audio Player</h5>
-                              {isDownloadingAudio && (
-                                <span style={{ color: '#0078d4', fontSize: '0.9em', marginBottom: '0.5em' }}>Downloading audio file...</span>
-                              )}
-                              {/* Show error only if download was attempted and failed */}
-                              {!isDownloadingAudio && citationAudioBlobUrl === null && activeCitationDetails?.file?.BlobUrl && hasDownloadedAudio && (
-                                <span style={{ color: 'red', fontSize: '0.9em', marginBottom: '0.5em' }}>Failed to download audio file.</span>
-                              )}
-                              <AudioPlayer
-                                ref={citationAudioRef}
-                                src={audioUrl}
-                                preload="auto"
-                                onPlay={handlePlay}
-                                onListen={e => {
-                                  const audioEl = citationAudioRef.current?.audio.current;
-                                  if (audioEl) setCitationCurrentTime(audioEl.currentTime);
-                                }}
-                                onLoadedMetaData={handleAudioLoadedMetaData}
-                                style={{ width: '100%' }}
-                                showJumpControls={false}
-                                showDownloadProgress={true}
-                                customAdditionalControls={[]}
-                                customVolumeControls={[RHAP_UI.VOLUME]}
-                              />
-
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '1em', fontSize: '0.9em', color: '#555', marginTop: '0.5em' }}>
-                                <strong>Starts at:</strong> {typeof startTimeRaw === 'string' ? `${startTime.toFixed(2)}s` : startTimeRaw}
-                                <button
-                                  type="button"
-                                  style={{ marginLeft: '1em', padding: '2px 8px', fontSize: '0.9em', borderRadius: '4px', border: '1px solid #ccc', background: '#f7f7fa', cursor: 'pointer' }}
-                                  onClick={async () => {
-                                    if (!citationAudioBlobUrl && !isDownloadingAudio && !hasDownloadedAudio) {
-                                      await downloadAndSetCitationAudio(activeCitationDetails.file.BlobUrl, startTime);
-                                      return;
-                                    }
-                                    const audioEl = citationAudioRef.current?.audio?.current;
-                                    if (audioEl && audioEl.seekable.length > 0) {
-                                      audioEl.currentTime = startTime;
-                                      audioEl.play();
-                                      setHasSeekedCitation(true);
-                                    } else if (!isDownloadingAudio) {
-                                      alert('Audio not loaded or seekable yet.');
-                                    }
-                                  }}
-                                >
-                                  Jump to citation start
-                                </button>
-                              </div>
-                            </div>
-                          );
-                        })()
-                      ) : null}
-                      {/* Full transcription with chunk highlight, scrollable and auto-scroll to chunk, fills remaining space */}
-                      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-                        <h5 style={{ margin: '1em 0 0.5em 0' }}>Full Transcription</h5>
-                        <div
-                          style={{
-                            fontFamily: 'monospace',
-                            fontSize: '1em',
-                            whiteSpace: 'pre-wrap',
-                            lineHeight: '1.5',
-                            flex: 1,
-                            minHeight: 0,
-                            overflowY: 'auto',
-                            border: '1px solid #eee',
-                            borderRadius: '6px',
-                            padding: '0.5em',
-                            paddingLeft: '0',
-                            background: '#fff'
-                          }}
-                          ref={el => {
-                            // Only auto-scroll once per citation panel open/change
-                            if (el && activeCitationDetails && activeCitationDetails.chunk && !transcriptAutoScrollMap.current.get(el)) {
-                              const startIdx = activeCitationDetails.chunk?.StartPhraseIndex ?? -1;
-                              const phraseDiv = el.querySelector(`[data-phrase-idx='${startIdx}']`);
-                              if (phraseDiv) {
-                                phraseDiv.scrollIntoView({ behavior: 'auto', block: 'center' });
-                                transcriptAutoScrollMap.current.set(el, true);
-                              }
-                            }
-                          }}
-                        >
-                          {activeCitationDetails.phrases?.map((phrase: any, idx: number) => {
-                            const startIdx = activeCitationDetails.chunk?.StartPhraseIndex ?? -1;
-                            const endIdx = activeCitationDetails.chunk?.EndPhraseIndex ?? -1;
-                            const isChunk = idx >= startIdx && idx <= endIdx;
-                            const confidence = typeof phrase.RecognitionConfidence === 'number' ? phrase.RecognitionConfidence : 0;
-                            const borderColor = getConfidenceColor(confidence);
-                            const startTimeRaw = phrase?.StartTime ?? 0;
-                            const startTime = parseTimeToSeconds(startTimeRaw);
-                            return (
-                              <div
-                                key={phrase._id}
-                                data-phrase-idx={idx}
-                                style={{
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  background: isChunk ? '#e6f7ff' : 'transparent',
-                                  borderRadius: isChunk ? '4px' : undefined,
-                                  padding: isChunk ? '2px 0' : undefined,
-                                  borderLeft: `5px solid ${borderColor}`,
-                                  paddingLeft: `0.5em`,
-                                  marginLeft: '0',
-                                }}
-                                title={`Transcription confidence: ${(confidence * 100).toFixed(1)}%`}
-                              >
-                                <span style={{ flex: 1 }}>{phrase.DisplayText}</span>
-                                <button
-                                  type="button"
-                                  style={{
-                                    marginLeft: 'auto',
-                                    height: '22px',
-                                    background: '#f7f7fa',
-                                    border: 'none',
-                                    borderRadius: '3px',
-                                    cursor: 'pointer',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    padding: 0,
-                                    color: 'gray',
-                                    userSelect: 'none'
-                                  }}
-                                  title={`Jump to ${startTime.toFixed(2)}s`}
-                                  onClick={() => handleSeekAndPlay(startTime)}
-                                >
-                                  ▶
-                                </button>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )
-                ) : (
-                  <div>Loading citation details...</div>
-                )}
-              </div>
-            </Stack.Item>
+          {messages && messages.length > 0 && (
+            <CitationPanel
+              isCitationPanelOpen={isCitationPanelOpen}
+              activeCitation={activeCitation}
+              activeCitationDetails={activeCitationDetails}
+              setIsCitationPanelOpen={setIsCitationPanelOpen}
+            />
           )}
           {messages && messages.length > 0 && isIntentsPanelOpen && (
             <Stack.Item className={styles.citationPanel} tabIndex={0} role="tabpanel" aria-label="Intents Panel">
