@@ -40,10 +40,33 @@ const CitationPanel: React.FC<CitationPanelProps> = ({
 
   const getConfidenceColor = (conf: number): string => {
     conf = Math.max(0, Math.min(1, conf));
-    const blend = 0.6;
-    const r = Math.round((conf < 0.5 ? 220 + (255 - 220) * (conf / 0.5) : 255 + (34 - 255) * ((conf - 0.5) / 0.5)) * blend + 255 * (1 - blend));
-    const g = Math.round((conf < 0.5 ? 38 + (215 - 38) * (conf / 0.5) : 215 + (197 - 215) * ((conf - 0.5) / 0.5)) * blend + 255 * (1 - blend));
-    const b = Math.round((conf < 0.5 ? 38 : 0 + (94 - 0) * ((conf - 0.5) / 0.5)) * blend + 255 * (1 - blend));
+
+    // Define gradient stops with reduced saturation
+    const stops = [
+      { stop: 0.45, r: 200, g: 100, b: 100 }, // Less saturated Red
+      { stop: 0.55, r: 220, g: 160, b: 100 }, // Less saturated Orange
+      { stop: 0.65, r: 220, g: 200, b: 100 }, // Less saturated Yellow
+      { stop: 0.8, r: 100, g: 180, b: 120 },  // Less saturated Green
+    ];
+
+    // Find the two stops to interpolate between
+    let lower = stops[0];
+    let upper = stops[stops.length - 1];
+    for (let i = 0; i < stops.length - 1; i++) {
+      if (conf >= stops[i].stop && conf <= stops[i + 1].stop) {
+        lower = stops[i];
+        upper = stops[i + 1];
+        break;
+      }
+    }
+
+    // Interpolate between the two stops
+    const range = upper.stop - lower.stop;
+    const factor = (conf - lower.stop) / range;
+    const r = Math.round(lower.r + (upper.r - lower.r) * factor);
+    const g = Math.round(lower.g + (upper.g - lower.g) * factor);
+    const b = Math.round(lower.b + (upper.b - lower.b) * factor);
+
     return `rgb(${r},${g},${b})`;
   };
 
