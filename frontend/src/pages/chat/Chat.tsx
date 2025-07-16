@@ -49,6 +49,49 @@ const enum messageStatus {
 }
 
 const Chat = () => {
+  // State for queued playback and last requested timestamp
+  const [queuedSeekTime, setQueuedSeekTime] = useState<number | null>(null);
+  const [isSeekQueued, setIsSeekQueued] = useState(false);
+
+  // Unified handler for seeking and playback
+  const handleSeekAndPlay = async (startTime: number) => {
+    // If audio is not downloaded, start download and queue seek
+    if (!citationAudioBlobUrl && !isDownloadingAudio && !hasDownloadedAudio && activeCitationDetails?.file?.BlobUrl) {
+      setQueuedSeekTime(startTime);
+      setIsSeekQueued(true);
+      await downloadAndSetCitationAudio(activeCitationDetails.file.BlobUrl, startTime);
+      // downloadAndSetCitationAudio will seek and play when ready
+      return;
+    }
+    // If audio is downloaded and ready
+    const audioEl = citationAudioRef.current?.audio?.current;
+    if (audioEl && audioEl.seekable.length > 0) {
+      audioEl.currentTime = startTime;
+      audioEl.play();
+      setHasSeekedCitation(true);
+      setQueuedSeekTime(null);
+      setIsSeekQueued(false);
+    } else {
+      // If not seekable yet, queue seek
+      setQueuedSeekTime(startTime);
+      setIsSeekQueued(true);
+      alert('Audio not loaded or seekable yet. Will play when ready.');
+    }
+  };
+
+  // When audio loads, check if a seek is queued
+  const handleAudioLoadedMetaData = () => {
+    setTimeout(() => {
+      const audioEl = citationAudioRef.current?.audio?.current;
+      if (isSeekQueued && queuedSeekTime !== null && audioEl && audioEl.seekable.length > 0) {
+        audioEl.currentTime = queuedSeekTime;
+        audioEl.play();
+        setHasSeekedCitation(true);
+        setQueuedSeekTime(null);
+        setIsSeekQueued(false);
+      }
+    }, 100);
+  };
   /**
    * Returns a color string for a confidence value (0-1).
    * 0 = red, 0.5 = yellow, 1 = green, smooth gradient.
@@ -1164,8 +1207,12 @@ const Chat = () => {
                           return (
                             <div style={{ marginBottom: '1em', padding: '0.5em', background: '#f0f8ff', borderRadius: '6px' }}>
                               <h5 style={{ margin: 0 }}>Audio Player</h5>
-                              {citationAudioBlobUrl && (
-                                <span style={{ color: '#0078d4', fontSize: '0.9em', marginBottom: '0.5em' }}>Playing downloaded file</span>
+                              {isDownloadingAudio && (
+                                <span style={{ color: '#0078d4', fontSize: '0.9em', marginBottom: '0.5em' }}>Downloading audio file...</span>
+                              )}
+                              {/* Show error only if download was attempted and failed */}
+                              {!isDownloadingAudio && citationAudioBlobUrl === null && activeCitationDetails?.file?.BlobUrl && hasDownloadedAudio && (
+                                <span style={{ color: 'red', fontSize: '0.9em', marginBottom: '0.5em' }}>Failed to download audio file.</span>
                               )}
                               <AudioPlayer
                                 ref={citationAudioRef}
@@ -1176,7 +1223,7 @@ const Chat = () => {
                                   const audioEl = citationAudioRef.current?.audio.current;
                                   if (audioEl) setCitationCurrentTime(audioEl.currentTime);
                                 }}
-                                onLoadedMetaData={handleAudioLoaded}
+                                onLoadedMetaData={handleAudioLoadedMetaData}
                                 style={{ width: '100%' }}
                                 showJumpControls={false}
                                 showDownloadProgress={true}
@@ -1247,11 +1294,15 @@ const Chat = () => {
                             const isChunk = idx >= startIdx && idx <= endIdx;
                             const confidence = typeof phrase.RecognitionConfidence === 'number' ? phrase.RecognitionConfidence : 0;
                             const borderColor = getConfidenceColor(confidence);
+                            const startTimeRaw = phrase?.StartTime ?? 0;
+                            const startTime = parseTimeToSeconds(startTimeRaw);
                             return (
                               <div
                                 key={phrase._id}
                                 data-phrase-idx={idx}
                                 style={{
+                                  display: 'flex',
+                                  alignItems: 'center',
                                   background: isChunk ? '#e6f7ff' : 'transparent',
                                   borderRadius: isChunk ? '4px' : undefined,
                                   padding: isChunk ? '2px 0' : undefined,
@@ -1259,9 +1310,30 @@ const Chat = () => {
                                   paddingLeft: `0.5em`,
                                   marginLeft: '0',
                                 }}
-                                title={`Confidence: ${(confidence * 100).toFixed(1)}%`}
+                                title={`Transcription confidence: ${(confidence * 100).toFixed(1)}%`}
                               >
-                                {phrase.DisplayText}
+                                <span style={{ flex: 1 }}>{phrase.DisplayText}</span>
+                                <button
+                                  type="button"
+                                  style={{
+                                    marginLeft: 'auto',
+                                    height: '22px',
+                                    background: '#f7f7fa',
+                                    border: 'none',
+                                    borderRadius: '3px',
+                                    cursor: 'pointer',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    padding: 0,
+                                    color: 'gray',
+                                    userSelect: 'none'
+                                  }}
+                                  title={`Jump to ${startTime.toFixed(2)}s`}
+                                  onClick={() => handleSeekAndPlay(startTime)}
+                                >
+                                  ▶
+                                </button>
                               </div>
                             );
                           })}
