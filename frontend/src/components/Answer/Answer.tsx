@@ -69,7 +69,9 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
   const createCitationFilepath = (citation: Citation, index: number, truncate: boolean = false) => {
     let citationFilename = ''
 
-    if (citation.filepath) {
+    if (citation.title) {
+      citationFilename = `${citation.title}`
+    } else if (citation.filepath) {
       const part_i = citation.part_index ?? (citation.chunk_id ? parseInt(citation.chunk_id) + 1 : '')
       if (truncate && citation.filepath.length > filePathTruncationLimit) {
         const citationLength = citation.filepath.length

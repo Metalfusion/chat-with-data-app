@@ -1103,9 +1103,10 @@ async def get_extended_citation(chunk_id):
         chunk = await db[MONGO_CHUNKS].find_one({"_id": chunk_id}, {
             "_id": 1,
             "ChunkIndex": 1,
+            "StartPhraseIndex": 1,
             "EndPhraseIndex": 1,
             "SpeechFileId": 1,
-            "StartPhraseIndex": 1
+            "Title": 1,
         })
 
         if not chunk:
@@ -1118,7 +1119,8 @@ async def get_extended_citation(chunk_id):
             "BlobUrl": 1,
             "CreatedAt": 1,
             "FileHash": 1,
-            "OriginalFileName": 1
+            "OriginalFileName": 1,
+            "SourceInfo": 1
         })
         phrases_cursor = db[MONGO_PHRASES].find({"SpeechFileId": chunk["SpeechFileId"]}, {
             "_id": 1,
@@ -1130,6 +1132,7 @@ async def get_extended_citation(chunk_id):
             "SpeechFileId": 1,
             "StartTime": 1
         })
+
         file_doc, phrases = await asyncio.gather(
             file_task,
             phrases_cursor.to_list(length=1000)
