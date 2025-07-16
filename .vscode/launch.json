@@ -3,7 +3,7 @@
   "configurations": [
     {
       "name": "Python: Sample App Backend",
-      "type": "python",
+      "type": "debugpy",
       "request": "launch",
       "module": "quart",
       "cwd": "${workspaceFolder}",
@@ -27,6 +27,24 @@
       "url": "http://127.0.0.1:50505",
       "webRoot": "${workspaceFolder}/frontend",
       "smartStep": true
+    },
+    {
+      "name": "Frontend: Run Vite Dev Server",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}/frontend",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev"],
+      "console": "integratedTerminal"
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Run Full Stack (Backend + Frontend)",
+      "configurations": [
+        "Python: Sample App Backend",
+        "Frontend: Run Vite Dev Server"
+      ]
     }
   ]
 }

@@ -15,6 +15,7 @@ from quart import (
     render_template,
     current_app,
 )
+from quart_cors import cors
 
 from openai import AsyncAzureOpenAI
 from azure.identity.aio import (
@@ -43,6 +44,7 @@ cosmos_db_ready = asyncio.Event()
 
 def create_app():
     app = Quart(__name__)
+    app = cors(app, allow_origin="*")  # Allow all origins for development
     app.register_blueprint(bp)
     app.config["TEMPLATES_AUTO_RELOAD"] = True
     

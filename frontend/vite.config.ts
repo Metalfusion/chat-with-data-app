@@ -11,8 +11,9 @@ export default defineConfig({
   },
   server: {
     proxy: {
-      '/ask': 'http://localhost:5000',
-      '/chat': 'http://localhost:5000'
+      '/ask': 'http://localhost:50505',
+      '/chat': 'http://localhost:50505',
+      '/citation': 'http://localhost:50505' // Updated to correct backend port
     }
   }
 })

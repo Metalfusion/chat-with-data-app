@@ -1,4 +1,4 @@
-import { useContext, useEffect, useState, useRef, useLayoutEffect } from 'react'
+import React, { useContext, useEffect, useState, useRef, useLayoutEffect } from 'react'
 import { CommandBarButton, IconButton, Dialog, DialogType, Stack } from '@fluentui/react'
 import { SquareRegular, ShieldLockRegular, ErrorCircleRegular } from '@fluentui/react-icons'
 
@@ -127,7 +127,7 @@ const Chat = () => {
       return
     }
     const userInfoList = await getUserInfo()
-    if (userInfoList.length === 0 && window.location.hostname !== '127.0.0.1') {
+    if (userInfoList.length === 0 && !['127.0.0.1', 'localhost'].includes(window.location.hostname)) {
       setShowAuthMessage(true)
     } else {
       setShowAuthMessage(false)
@@ -820,7 +820,7 @@ const Chat = () => {
             ) : (
               <div className={styles.chatMessageStream} style={{ marginBottom: isLoading ? '40px' : '0px' }} role="log">
                 {messages.map((answer, index) => (
-                  <>
+                  <React.Fragment key={answer.id || index}>
                     {answer.role === 'user' ? (
                       <div className={styles.chatMessageUser} tabIndex={0}>
                         <div className={styles.chatMessageUserMessage}>
@@ -851,7 +851,7 @@ const Chat = () => {
                         <span className={styles.chatMessageErrorContent}>{typeof answer.content === "string" && answer.content}</span>
                       </div>
                     ) : null}
-                  </>
+                  </React.Fragment>
                 ))}
                 {showLoadingMessage && (
                   <>
