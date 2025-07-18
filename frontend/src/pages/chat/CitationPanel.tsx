@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Stack, IconButton } from '@fluentui/react';
 import AudioPlayer, { RHAP_UI } from 'react-h5-audio-player';
 import styles from './Chat.module.css';
+import SpeechFileInfo from '../../components/Transription/SpeechFileInfo';
 
 interface CitationPanelProps {
   isCitationPanelOpen: boolean;
@@ -199,58 +200,7 @@ const CitationPanel: React.FC<CitationPanelProps> = ({
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', height: '100%', minHeight: 0 }}>
               {/* File Info */}
-              <div style={{ marginBottom: '1em', padding: '0.5em', background: '#f7f7fa', borderRadius: '6px' }}>
-                <h5 style={{ margin: 0 }}>File Info</h5>
-                <div><strong>Audio File Name:</strong> {activeCitationDetails.file?.OriginalFileName}</div>
-                <div><strong>Blob URL:</strong> {activeCitationDetails.file?.BlobUrl ? <a href={activeCitationDetails.file.BlobUrl} target="_blank" rel="noopener noreferrer">Open</a> : '-'}</div>
-                <div><strong>File Hash:</strong> {activeCitationDetails.file?.FileHash}</div>
-              </div>
-              {/* Source Info */}
-              {activeCitationDetails.file?.SourceInfo && (
-                <div style={{ marginBottom: '1em', padding: '0.5em', background: '#f7f7fa', borderRadius: '6px' }}>
-                  <h5 style={{ margin: 0 }}>Source Info</h5>
-                  {activeCitationDetails.file.SourceInfo.PrimarySpeaker && (
-                    <div><strong>Speaker:</strong> {activeCitationDetails.file.SourceInfo.PrimarySpeaker}</div>
-                  )}
-                  {activeCitationDetails.file.SourceInfo.Album && (
-                    <div><strong>Album:</strong> {activeCitationDetails.file.SourceInfo.Album}</div>
-                  )}
-                  {activeCitationDetails.file.SourceInfo.RecordingYear && !activeCitationDetails.file.SourceInfo.RecordingDateTime && (
-                    <div><strong>Recording Year:</strong> {activeCitationDetails.file.SourceInfo.RecordingYear}</div>
-                  )}
-                  {activeCitationDetails.file.SourceInfo.RecordingDateTime ? (
-                    <div>
-                      <strong>Recording Date:</strong> {
-                        (() => {
-                          const dateTime = new Date(activeCitationDetails.file.SourceInfo.RecordingDateTime.DateTime);
-                          if (dateTime.getHours() === 0 && dateTime.getMinutes() === 0) {
-                            return dateTime.toLocaleDateString();
-                          }
-                          const offsetMinutes = activeCitationDetails.file.SourceInfo.RecordingDateTime.Offset || 0;
-                          dateTime.setMinutes(dateTime.getMinutes() + offsetMinutes);
-                          return dateTime.toLocaleString();
-                        })()
-                      }
-                    </div>
-                  ) : (
-                    activeCitationDetails.file.SourceInfo.RecordingYear && (
-                      <div><strong>Recording Year:</strong> {activeCitationDetails.file.SourceInfo.RecordingYear}</div>
-                    )
-                  )}
-                  {activeCitationDetails.file.SourceInfo.Title && (
-                    <div><strong>Title:</strong> {activeCitationDetails.file.SourceInfo.Title}</div>
-                  )}
-                  {activeCitationDetails.file.SourceInfo.Description && (
-                    <div><strong>Description:</strong> {activeCitationDetails.file.SourceInfo.Description}</div>
-                  )}
-                  {activeCitationDetails.file.SourceInfo.LanguageCode && (
-                    <div><strong>Language:</strong> {activeCitationDetails.file.SourceInfo.LanguageCode}</div>
-                  )}
-                  {activeCitationDetails.file.SourceInfo.Copyright && (
-                    <div><strong>Copyright:</strong> {activeCitationDetails.file.SourceInfo.Copyright}</div>
-                  )}
-                </div>
-              )}
+              <SpeechFileInfo file={activeCitationDetails.file} />
               {/* Audio Player */}
               {activeCitationDetails.file?.BlobUrl && activeCitationDetails.file.BlobUrl.endsWith('.mp3') && activeCitationDetails.chunk && activeCitationDetails.phrases ? (
                 (() => {
