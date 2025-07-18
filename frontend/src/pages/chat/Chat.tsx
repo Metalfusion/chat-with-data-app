@@ -59,6 +59,7 @@ const Chat = () => {
   const [activeCitation, setActiveCitation] = useState<Citation>()
   const [isCitationPanelOpen, setIsCitationPanelOpen] = useState<boolean>(false)
   const [activeCitationDetails, setActiveCitationDetails] = useState<any>(null)
+  const [detailsFetchStatus, setDetailsFetchStatus] = useState<{ state: 'idle' | 'loading' | 'error' | 'success'; message?: string }>({ state: 'idle' });
   const [isIntentsPanelOpen, setIsIntentsPanelOpen] = useState<boolean>(false)
   const abortFuncs = useRef([] as AbortController[])
   const [showAuthMessage, setShowAuthMessage] = useState<boolean | undefined>()
@@ -710,21 +711,28 @@ const Chat = () => {
     setActiveCitation(citation)
     setIsCitationPanelOpen(true)
     setActiveCitationDetails(null)
-    
+    setDetailsFetchStatus({ state: 'loading', message: 'Loading citation details...' });
+
     // Use filename or id as chunk_id
     const chunkId = citation.filepath;
-    if (!chunkId) return
-    
+    if (!chunkId) {
+      setDetailsFetchStatus({ state: 'error', message: 'No chunk id found for citation.' });
+      return;
+    }
+
     try {
       const res = await fetch(`/citation/${chunkId}`)
       if (res.ok) {
         const details = await res.json()
         setActiveCitationDetails(details)
+        setDetailsFetchStatus({ state: 'success' });
       } else {
-        setActiveCitationDetails({ error: 'Not found' })
+        setActiveCitationDetails(null);
+        setDetailsFetchStatus({ state: 'error', message: 'Not found' });
       }
     } catch (e) {
-      setActiveCitationDetails({ error: 'Fetch error' })
+      setActiveCitationDetails(null);
+      setDetailsFetchStatus({ state: 'error', message: 'Fetch error' });
     }
   }
 
@@ -972,8 +980,14 @@ const Chat = () => {
           {messages && messages.length > 0 && (
             <CitationPanel
               isCitationPanelOpen={isCitationPanelOpen}
-              activeCitation={activeCitation}
+              activeCitation={activeCitation ? {
+                ...activeCitation,
+                title: activeCitation.title === null ? undefined : activeCitation.title,
+                url: activeCitation.url === null ? undefined : activeCitation.url,
+                filepath: activeCitation.filepath === null ? undefined : activeCitation.filepath,
+              } : null}
               activeCitationDetails={activeCitationDetails}
+              detailsFetchStatus={detailsFetchStatus}
               setIsCitationPanelOpen={setIsCitationPanelOpen}
             />
           )}
