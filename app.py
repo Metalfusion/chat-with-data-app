@@ -1074,7 +1074,11 @@ async def generate_title(conversation_messages) -> str:
         return messages[-2]["content"]
 
 
-# Register citation API blueprint
+# Register speech API blueprints
 from backend.citation_api import bp_citation
+from backend.transcript_api import bp_transcript
+
 app = create_app()
+
 app.register_blueprint(bp_citation)
+app.register_blueprint(bp_transcript)

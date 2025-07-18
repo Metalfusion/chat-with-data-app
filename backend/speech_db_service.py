@@ -34,6 +34,7 @@ class SpeechDbService:
         self.cosmos_db_name: str = os.environ.get("SPEECH_COSMOSDB_DATABASE", "SpeechDB")
         self.cosmos_files: str = os.environ.get("SPEECH_FILES_CONTAINER", "Files")
         self.cosmos_phrases: str = os.environ.get("SPEECH_PHRASES_CONTAINER", "Phrases")
+        self.cosmos_summaries: str = os.environ.get("SPEECH_SUMMARIES_CONTAINER", "Summaries")
         self.cosmos_client: Optional[CosmosClient] = None
         self.cosmos_db: Any = None
         self._initialized: bool = True
@@ -64,6 +65,14 @@ class SpeechDbService:
         container = self.cosmos_db.get_container_client(self.cosmos_files)
         query = "SELECT * FROM c WHERE c.id=@id"
         params = [{"name": "@id", "value": speech_file_id}]
+        items = [item async for item in container.query_items(query, parameters=params)]
+        return items[0] if items else None
+    
+    async def get_summary(self, speech_file_id: Any) -> Optional[Dict[str, Any]]:
+        await self.init_clients()
+        container = self.cosmos_db.get_container_client(self.cosmos_summaries)
+        query = "SELECT * FROM c WHERE c.SpeechFileId=@sfid"
+        params = [{"name": "@sfid", "value": speech_file_id}]
         items = [item async for item in container.query_items(query, parameters=params)]
         return items[0] if items else None
 

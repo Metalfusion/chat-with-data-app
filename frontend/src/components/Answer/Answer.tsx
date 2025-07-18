@@ -31,7 +31,7 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
     return Feedback.Neutral
   }
 
-  const [isRefAccordionOpen, { toggle: toggleIsRefAccordionOpen }] = useBoolean(false)
+  const [isRefAccordionOpen, { toggle: toggleIsRefAccordionOpen, setTrue: openRefAccordion, setFalse: closeRefAccordion }] = useBoolean(false)
   const filePathTruncationLimit = 50
 
   const parsedAnswer = useMemo(() => parseAnswer(answer), [answer])
@@ -50,9 +50,21 @@ export const Answer = ({ answer, onCitationClicked, onExectResultClicked }: Prop
     toggleIsRefAccordionOpen()
   }
 
+
   useEffect(() => {
     setChevronIsExpanded(isRefAccordionOpen)
   }, [isRefAccordionOpen])
+
+  // Open citations accordion by default if there are any citations
+  useEffect(() => {
+    if (parsedAnswer?.citations && parsedAnswer.citations.length > 0) {
+      openRefAccordion();
+    } else {
+      closeRefAccordion();
+    }
+    // Only run when citations change
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [parsedAnswer?.citations?.length]);
 
   useEffect(() => {
     if (answer.message_id == undefined) return

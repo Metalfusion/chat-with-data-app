@@ -1,0 +1,33 @@
+.speechInfoBox {
+  margin-bottom: 1em;
+  padding: 0.5em;
+  background: #f7f7fa;
+  border-radius: 6px;
+}
+
+.speechInfoTitle {
+  margin: 0;
+}
+
+.speechInfoList {
+  margin: 0.5em 0 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.speechInfoItem {
+  margin-bottom: 0.3em;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+}
+
+.speechInfoLabel {
+  font-weight: 600;
+  margin-right: 0.5em;
+}
+
+.speechInfoValue {
+  flex: 1;
+  word-break: break-word;
+}

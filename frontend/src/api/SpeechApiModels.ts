@@ -48,3 +48,11 @@ export interface SpeechFile {
     CreatedAt: string;
     SourceInfo?: SpeechSourceInfo;
 }
+
+export interface TranscriptionSummary {
+    SourceFileName: string;
+    SourceFileHash: string;
+    Summary: string;
+    SourceMetadataFile: string;
+    CreatedUtc: string;
+}

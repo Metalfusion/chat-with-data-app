@@ -1,6 +1,8 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import AudioPlayer, { RHAP_UI } from 'react-h5-audio-player';
 import { SpeechFile, Phrase, Chunk } from '../../api/SpeechApiModels';
+import styles from './TranscriptionDisplay.module.css';
 
 interface TranscriptionDisplayProps {
   file?: SpeechFile;
@@ -133,13 +135,13 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({ file, phras
 
   return (
     <>
-      <div style={{ marginBottom: '1em', padding: '0.5em', background: '#f0f8ff', borderRadius: '6px' }}>
-        <h5 style={{ margin: 0 }}>Audio Player</h5>
+      <div className={styles.transcriptionDisplayAudioContainer}>
+        <h5 className={styles.transcriptionDisplayAudioTitle}>Audio Player</h5>
         {isDownloadingAudio && (
-          <span style={{ color: '#0078d4', fontSize: '0.9em', marginBottom: '0.5em' }}>Downloading audio file...</span>
+          <span className={styles.transcriptionDisplayAudioStatus}>Downloading audio file...</span>
         )}
         {!isDownloadingAudio && audioBlobUrl === null && file?.BlobUrl && hasDownloadedAudio && (
-          <span style={{ color: 'red', fontSize: '0.9em', marginBottom: '0.5em' }}>Failed to download audio file.</span>
+          <span className={styles.transcriptionDisplayAudioError}>Failed to download audio file.</span>
         )}
         <AudioPlayer
           ref={audioRef}
@@ -171,11 +173,11 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({ file, phras
           customAdditionalControls={[]}
           customVolumeControls={[RHAP_UI.VOLUME]}
         />
-        <div style={{ display: 'flex', alignItems: 'center', gap: '0.2em', fontSize: '0.9em', color: '#555', marginTop: '0.5em' }}>
+        <div className={styles.transcriptionDisplayAudioControls}>
           <strong>Starts at:</strong> {typeof resolvedStartTime === 'number' ? formatSecondsToTimestamp(resolvedStartTime) : startTimeRaw}
           <button
             type="button"
-            style={{ marginLeft: '1em', padding: '2px 8px', fontSize: '0.9em', borderRadius: '4px', border: '1px solid #ccc', background: '#f7f7fa', cursor: 'pointer' }}
+            className={styles.transcriptionDisplayJumpButton}
             onClick={async () => {
               if (!audioBlobUrl && !isDownloadingAudio && !hasDownloadedAudio) {
                 if (file) {
@@ -197,23 +199,10 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({ file, phras
         </div>
       </div>
       {/* Full Transcription */}
-      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
-        <h5 style={{ margin: '1em 0 0.5em 0' }}>Full Transcription</h5>
+      <div className={styles.transcriptionDisplayMain}>
+        <h5 className={styles.transcriptionDisplayMainTitle}>Full Transcription</h5>
         <div
-          style={{
-            fontFamily: 'monospace',
-            fontSize: '1em',
-            whiteSpace: 'pre-wrap',
-            lineHeight: '1.5',
-            flex: 1,
-            minHeight: 0,
-            overflowY: 'auto',
-            border: '1px solid #eee',
-            borderRadius: '6px',
-            padding: '0.5em',
-            paddingLeft: '0',
-            background: '#fff'
-          }}
+          className={styles.transcriptionDisplayTranscript}
           ref={el => {
             if (el && chunk && !transcriptAutoScrollMap.current.get(el)) {
               const startIdx = chunk?.StartPhraseIndex ?? -1;
@@ -235,34 +224,18 @@ const TranscriptionDisplay: React.FC<TranscriptionDisplayProps> = ({ file, phras
               <div
                 key={phrase.Id || idx}
                 data-phrase-idx={idx}
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  background: isChunk ? '#e6f7ff' : 'transparent',
-                  borderRadius: isChunk ? '4px' : undefined,
-                  padding: isChunk ? '2px 0' : undefined,
-                  borderLeft: `5px solid ${borderColor}`,
-                  paddingLeft: `0.5em`,
-                  marginLeft: '0',
-                }}
+                className={
+                  [
+                    styles.transcriptionDisplayPhrase,
+                    isChunk ? styles.transcriptionDisplayPhraseChunk : ''
+                  ].join(' ')
+                }
+                style={{ borderLeft: `5px solid ${borderColor}` }}
                 title={`Transcription confidence: ${(confidence * 100).toFixed(1)}%`}>
-                <span style={{ flex: 1 }}>{phrase.DisplayText}</span>
+                <span className={styles.transcriptionDisplayPhraseText}>{phrase.DisplayText}</span>
                 <button
                   type="button"
-                  style={{
-                    marginLeft: 'auto',
-                    height: '22px',
-                    background: '#f7f7fa',
-                    border: 'none',
-                    borderRadius: '3px',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: 0,
-                    color: 'gray',
-                    userSelect: 'none'
-                  }}
+                  className={styles.transcriptionDisplayPhraseButton}
                   title={`Jump to ${formatSecondsToTimestamp(parseTimeToSeconds(phrase.StartTime))}`}
                   onClick={() => handleSeekAndPlay(parseTimeToSeconds(phrase.StartTime))}>
                   ▶

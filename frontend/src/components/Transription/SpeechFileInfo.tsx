@@ -1,6 +1,8 @@
 
+
 import React from 'react';
 import { SpeechFile, SpeechSourceInfo } from '../../api/SpeechApiModels';
+import sharedStyles from './SpeechInfoShared.module.css';
 
 
 interface SpeechFileInfoProps {
@@ -11,54 +13,48 @@ const SpeechFileInfo: React.FC<SpeechFileInfoProps> = ({ file }) => {
   if (!file) return null;
   const source: SpeechSourceInfo | undefined = file.SourceInfo;
   return (
-    <div style={{ marginBottom: '1em', padding: '0.5em', background: '#f7f7fa', borderRadius: '6px' }}>
-      <h5 style={{ margin: 0 }}>File Info</h5>
-      <div><strong>Audio File Name:</strong> {file.OriginalFileName}</div>
-      <div><strong>Blob URL:</strong> {file.BlobUrl ? <a href={file.BlobUrl} target="_blank" rel="noopener noreferrer">Open</a> : '-'}</div>
-      <div><strong>File Hash:</strong> {file.FileHash}</div>
+    <div className={sharedStyles.speechInfoBox}>
+      <h5 className={sharedStyles.speechInfoTitle}>File Info</h5>
+      <ul className={sharedStyles.speechInfoList}>
+        <li className={sharedStyles.speechInfoItem}><span className={sharedStyles.speechInfoLabel}>Audio File Name:</span><span className={sharedStyles.speechInfoValue}>{file.OriginalFileName}</span></li>
+        <li className={sharedStyles.speechInfoItem}><span className={sharedStyles.speechInfoLabel}>Blob URL:</span><span className={sharedStyles.speechInfoValue}>{file.BlobUrl ? <a href={file.BlobUrl} target="_blank" rel="noopener noreferrer">Open</a> : '-'}</span></li>
+        <li className={sharedStyles.speechInfoItem}><span className={sharedStyles.speechInfoLabel}>File Hash:</span><span className={sharedStyles.speechInfoValue}>{file.FileHash}</span></li>
+      </ul>
       {source && (
         <div style={{ marginTop: '1em' }}>
-          <h5 style={{ margin: 0 }}>Source Info</h5>
-          {source.PrimarySpeaker && (
-            <div><strong>Speaker:</strong> {source.PrimarySpeaker}</div>
-          )}
-          {source.Album && (
-            <div><strong>Album:</strong> {source.Album}</div>
-          )}
-          {source.RecordingYear && !source.RecordingDateTime && (
-            <div><strong>Recording Year:</strong> {source.RecordingYear}</div>
-          )}
-          {source.RecordingDateTime ? (
-            <div>
-              <strong>Recording Date:</strong> {
-                (() => {
-                  // If RecordingDateTime is an ISO string, parse it
-                  const dateTime = new Date(source.RecordingDateTime as string);
-                  if (dateTime.getHours() === 0 && dateTime.getMinutes() === 0) {
-                    return dateTime.toLocaleDateString();
-                  }
-                  // Offset is not present in the model, so just show local time
-                  return dateTime.toLocaleString();
-                })()
-              }
-            </div>
-          ) : (
-            source.RecordingYear && (
-              <div><strong>Recording Year:</strong> {source.RecordingYear}</div>
-            )
-          )}
-          {source.Title && (
-            <div><strong>Title:</strong> {source.Title}</div>
-          )}
-          {source.Description && (
-            <div><strong>Description:</strong> {source.Description}</div>
-          )}
-          {source.LanguageCode && (
-            <div><strong>Language:</strong> {source.LanguageCode}</div>
-          )}
-          {source.Copyright && (
-            <div><strong>Copyright:</strong> {source.Copyright}</div>
-          )}
+          <h5 className={sharedStyles.speechInfoTitle}>Source Info</h5>
+          <ul className={sharedStyles.speechInfoList}>
+            {source.PrimarySpeaker && (
+              <li className={sharedStyles.speechInfoItem}><span className={sharedStyles.speechInfoLabel}>Speaker:</span><span className={sharedStyles.speechInfoValue}>{source.PrimarySpeaker}</span></li>
+            )}
+            {source.Album && (
+              <li className={sharedStyles.speechInfoItem}><span className={sharedStyles.speechInfoLabel}>Album:</span><span className={sharedStyles.speechInfoValue}>{source.Album}</span></li>
+            )}
+            {source.RecordingYear && !source.RecordingDateTime && (
+              <li className={sharedStyles.speechInfoItem}><span className={sharedStyles.speechInfoLabel}>Recording Year:</span><span className={sharedStyles.speechInfoValue}>{source.RecordingYear}</span></li>
+            )}
+            {source.RecordingDateTime ? (
+              <li className={sharedStyles.speechInfoItem}><span className={sharedStyles.speechInfoLabel}>Recording Date:</span><span className={sharedStyles.speechInfoValue}>{(() => {
+                const dateTime = new Date(source.RecordingDateTime as string);
+                if (dateTime.getHours() === 0 && dateTime.getMinutes() === 0) {
+                  return dateTime.toLocaleDateString();
+                }
+                return dateTime.toLocaleString();
+              })()}</span></li>
+            ) : null}
+            {source.Title && (
+              <li className={sharedStyles.speechInfoItem}><span className={sharedStyles.speechInfoLabel}>Title:</span><span className={sharedStyles.speechInfoValue}>{source.Title}</span></li>
+            )}
+            {source.Description && (
+              <li className={sharedStyles.speechInfoItem}><span className={sharedStyles.speechInfoLabel}>Description:</span><span className={sharedStyles.speechInfoValue}>{source.Description}</span></li>
+            )}
+            {source.LanguageCode && (
+              <li className={sharedStyles.speechInfoItem}><span className={sharedStyles.speechInfoLabel}>Language:</span><span className={sharedStyles.speechInfoValue}>{source.LanguageCode}</span></li>
+            )}
+            {source.Copyright && (
+              <li className={sharedStyles.speechInfoItem}><span className={sharedStyles.speechInfoLabel}>Copyright:</span><span className={sharedStyles.speechInfoValue}>{source.Copyright}</span></li>
+            )}
+          </ul>
         </div>
       )}
     </div>

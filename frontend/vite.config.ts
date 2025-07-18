@@ -13,7 +13,8 @@ export default defineConfig({
     proxy: {
       '/ask': 'http://localhost:50505',
       '/chat': 'http://localhost:50505',
-      '/citation': 'http://localhost:50505' // Updated to correct backend port
+      '/citation': 'http://localhost:50505',
+      '/transcript': 'http://localhost:50505'
     }
   }
 })

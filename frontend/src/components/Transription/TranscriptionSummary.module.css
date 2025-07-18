@@ -1,0 +1,11 @@
+/* For the summary markdown box */
+.summaryMarkdownBox {
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 8px;
+  padding: 1em;
+  font-size: 1.15em;
+  line-height: 1.6;
+  margin-bottom: 0.5em;
+  min-height: 3em;
+}
