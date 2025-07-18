@@ -1,13 +1,13 @@
 import asyncio
 from quart import jsonify, Blueprint
-from backend.speech_db_service import SpeechDbService
+from backend.speech_db_service import get_speech_db_service
 
 bp_citation = Blueprint("citation", __name__)
 
 # API to get extended citation info
 @bp_citation.route("/citation/<chunk_id>", methods=["GET"])
 async def get_extended_citation(chunk_id):
-    db_service = SpeechDbService()
+    db_service = get_speech_db_service()
     try:
         chunk = await db_service.get_chunk(chunk_id)
         if not chunk:
