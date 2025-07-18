@@ -280,8 +280,8 @@ const CitationPanel: React.FC<CitationPanelProps> = ({
                       customAdditionalControls={[]}
                       customVolumeControls={[RHAP_UI.VOLUME]}
                     />
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '1em', fontSize: '0.9em', color: '#555', marginTop: '0.5em' }}>
-                      <strong>Starts at:</strong> {typeof startTimeRaw === 'string' ? `${startTime.toFixed(2)}s` : startTimeRaw}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.2em', fontSize: '0.9em', color: '#555', marginTop: '0.5em' }}>
+                      <strong>Starts at:</strong> {typeof startTime === 'number' ? formatSecondsToTimestamp(startTime) : startTimeRaw}
                       <button
                         type="button"
                         style={{ marginLeft: '1em', padding: '2px 8px', fontSize: '0.9em', borderRadius: '4px', border: '1px solid #ccc', background: '#f7f7fa', cursor: 'pointer' }}
@@ -376,7 +376,7 @@ const CitationPanel: React.FC<CitationPanelProps> = ({
                           color: 'gray',
                           userSelect: 'none'
                         }}
-                        title={`Jump to ${parseTimeToSeconds(phrase.StartTime).toFixed(2)}s`}
+                        title={`Jump to ${formatSecondsToTimestamp(parseTimeToSeconds(phrase.StartTime))}`}
                         onClick={() => handleSeekAndPlay(parseTimeToSeconds(phrase.StartTime))}>
                         ▶
                       </button>
@@ -391,5 +391,13 @@ const CitationPanel: React.FC<CitationPanelProps> = ({
     </Stack.Item>
   );
 };
+
+// Format seconds as M:SS
+function formatSecondsToTimestamp(seconds: number): string {
+  if (isNaN(seconds) || seconds < 0) return '0:00';
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
+  return `${m}:${s.toString().padStart(2, '0')}`;
+}
 
 export default CitationPanel;
